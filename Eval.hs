@@ -4,6 +4,7 @@ module Eval (
 
 import Parse
 import qualified Data.Map as Map
+import Data.List (foldl1')
 
 eval :: LispVal -> LispVal
 eval val@(String _) = val
@@ -24,7 +25,7 @@ primitives = Map.fromList [("+", numOp (+)),
 	("quotient", numOp quot),
 	("remainder", numOp rem)]
 
-numOp op params = Number $ foldl1 op $ map unpack params where
+numOp op params = Number $ foldl1' op $ map unpack params where
 	unpack (Number n) = n
 	--TODO
 	--unpack (Float n) = n
