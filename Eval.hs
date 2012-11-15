@@ -5,18 +5,20 @@ module Eval (
 import Parse
 import qualified Data.Map as Map
 import Data.List (foldl1')
+import Control.Monad.Error
 
-eval :: LispVal -> LispVal
-eval val@(String _) = val
-eval val@(Number _) = val
-eval val@(Bool _) = val
-eval (List [Atom "quote", val]) = val
-eval (List (Atom f:args)) = apply f $ map eval args
+eval :: LispVal -> ThrowsError LispVal
+eval val@(String _) = return val
+eval val@(Number _) = return val
+eval val@(Bool _) = return val
+eval (List [Atom "quote", val]) = return val
+eval (List (Atom f:args)) = mapM eval args >>= apply f
+eval bad = throwError $ BadSpecialForm bad
 
 apply :: String -> [LispVal] -> LispVal
-apply f args = maybe (Bool False) ($ args) $ Map.lookup f primitives
+apply f args = maybe (throwError $ NotFunction "Unrecognized" f) ($ args) (Map.lookup f primitives)
 
-primitives :: Map.Map String ([LispVal] -> LispVal)
+primitives :: Map.Map String ([LispVal] -> ThrowsError LispVal)
 primitives = Map.fromList [("+", numOp (+)),
 	("-", numOp (-)),
 	("*", numOp (*)),
@@ -25,13 +27,13 @@ primitives = Map.fromList [("+", numOp (+)),
 	("quotient", numOp quot),
 	("remainder", numOp rem)]
 
-numOp op params = Number $ foldl1' op $ map unpack params where
-	unpack (Number n) = n
-	--TODO
-	--unpack (Float n) = n
-	unpack (String s) = let parsed = reads s in
-		if null parsed then 0 else fst $ parsed !! 0
-	unpack (List [n]) = unpack n
-	unpack _ = 0
-	
+numOp op val@[_] = throwError $ NumArgs 2 val
+numOp op params = mapM unpack params >>= return Number . foldl1' op
 
+unpack :: LispVal -> ThrowsError Integer
+unpack (Number n) = return n
+unpack (String s) = let parsed = reads s in
+	if null parsed then throwError $ TypeMismatch "number" $ String s else return $ fst $ parsed !! 0
+unpack (List [n]) = unpack n
+unpack bad = throwError $ TypeMismatch "number" bad 
+	

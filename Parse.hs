@@ -1,22 +1,47 @@
 module Parse (
 	LispVal (..),
+	LispError (..),
+	ThrowsError,
 	parseExpr,
-	readExpr
+	readExpr,
+	trap,
+	extract
 ) where
 
 import Text.ParserCombinators.Parsec hiding (spaces)
 import Control.Monad
 import Debug.Trace (traceShow)
 import Numeric (readOct, readHex)
+import Control.Monad.Error
+
+data LispError = NumArgs Integer [LispVal]
+	| TypeMismatch String [LispVal]
+	| Parser ParseError
+	| BadSpecialForm String LispVal
+	| NotFunction String String
+	| UnboundVar String String
+	| Default String deriving (Show)
 
 data LispVal = Atom String
 	| List [LispVal]
 	| DottedList [LispVal] LispVal
-	| Number Int
+	| Number Integer
 	| String String
 	| Bool Bool
 	| Float Double
 	| Char Char deriving (Show)
+	
+type ThrowsError = Either LispError
+
+instance Error LispError where
+	noMsg = Default "An error has occurred"
+	strMsg = Default
+	
+trap :: ThrowsError String -> ThrowsError String
+trap action = catchError action (return . show)
+
+extract :: ThrowsError a -> a
+extract (Right v) = v
 
 describe :: LispVal -> String
 describe (Atom _) = "atom"
@@ -101,10 +126,8 @@ symbol = oneOf "!@#$%^&*()"
 spaces :: Parser ()
 spaces = skipMany1 space
 
-readExpr :: String -> LispVal
+readExpr :: String -> ThrowsError LispVal
 readExpr input = case parse parseExpr "lisp" input of
-	Left err -> String $ "No match: " ++ show err
-	Right x -> x
-	
---main :: IO ()
---main = getArgs >>= \args -> putStrLn $ readExpr $ args !! 0
+	Left err -> throwError $ Parser err
+	Right x -> return x
+
