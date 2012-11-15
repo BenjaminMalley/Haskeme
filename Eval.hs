@@ -3,7 +3,7 @@ module Eval (
 ) where
 
 import Parse
-import Data.Map as Map
+import qualified Data.Map as Map
 
 eval :: LispVal -> LispVal
 eval val@(String _) = val
@@ -26,9 +26,9 @@ primitives = Map.fromList [("+", numOp (+)),
 
 numOp :: (Num a) => (a -> a -> a) -> [LispVal] -> LispVal
 numOp op params = Number $ foldl1 op $ map unpack params where
-	unpack :: LispVal -> Integer
+	unpack :: LispVal -> Int
 	unpack (Number n) = n
-	unpack (String s) = let parsed = reads n in
+	unpack (String s) = let parsed = reads s in
 		if null parsed then 0 else fst $ parsed !! 0
 	unpack (List [n]) = unpack n
 	unpack _ = 0
