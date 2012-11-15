@@ -24,12 +24,13 @@ primitives = Map.fromList [("+", numOp (+)),
 	("quotient", numOp quot),
 	("remainder", numOp rem)]
 
-numOp :: (Num a) => (a -> a -> a) -> [LispVal] -> LispVal
 numOp op params = Number $ foldl1 op $ map unpack params where
-	unpack :: LispVal -> Int
 	unpack (Number n) = n
+	--TODO
+	--unpack (Float n) = n
 	unpack (String s) = let parsed = reads s in
 		if null parsed then 0 else fst $ parsed !! 0
 	unpack (List [n]) = unpack n
 	unpack _ = 0
+	
 
