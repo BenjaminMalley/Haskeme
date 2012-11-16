@@ -15,7 +15,7 @@ import Numeric (readOct, readHex)
 import Control.Monad.Error
 
 data LispError = NumArgs Integer [LispVal]
-	| TypeMismatch String [LispVal]
+	| TypeMismatch String LispVal
 	| Parser ParseError
 	| BadSpecialForm String LispVal
 	| NotFunction String String
